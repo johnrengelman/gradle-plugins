@@ -18,9 +18,7 @@ class NodePlugin extends BasePlugin
     @Override
     Map<String, Class<? extends NodeBaseTask>> tasks ( Project project )
     {
-        final addTasks = extension( project, NODE_EXTENSION, NodeExtension ).addTasks
-
-        ( Map<String , Class<? extends NodeBaseTask>> )(
+        final baseTasks = ( Map<String , Class<? extends NodeBaseTask>> )(
         [
           ( HELP_TASK          ) : HelpTask,
           ( CLEAN_TASK         ) : CleanTask,
@@ -41,20 +39,36 @@ class NodePlugin extends BasePlugin
         ].
         collectEntries {
             String taskName, Class<? extends NodeBaseTask> taskClass ->
-            (( addTasks == null ) || ( addTasks.contains( taskName ))) ? [ taskName, taskClass ] : [:]
-        }.
-        collectEntries {
-            String taskName, Class<? extends NodeBaseTask> taskClass ->
             final otherTask = project.tasks.findByName( taskName )
 
             if ( otherTask )
             {
                 taskName += 'Node'
-                otherTask.dependsOn taskName
             }
 
             [ taskName, taskClass ]
         })
+
+        project.afterEvaluate {
+            final addTasks = extension( project, NODE_EXTENSION, NodeExtension ).addTasks
+            baseTasks.
+            collectEntries {
+                String taskName, Class<? extends NodeBaseTask> taskClass ->
+                    (( addTasks == null ) || ( addTasks.contains( taskName ))) ? [ taskName, taskClass ] : [:]
+            }.
+            each {
+                String taskName, Class<? extends NodeBaseTask> taskClass ->
+                if (taskName.endsWith('Node')) {
+                    final otherTask = project.tasks.findByName( taskName - 'Node' )
+                    if ( otherTask )
+                    {
+                        otherTask.dependsOn taskName
+                    }
+                }
+
+            }
+        }
+        baseTasks
     }
 
 
